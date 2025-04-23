@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>路线可视化 - Mapbox版</title>
+    <!-- 引入Mapbox GL JS -->
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+    <!-- 引入html2canvas用于截图功能 -->
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,500,700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: #f5f5f5;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            color: #333;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            background: #4285f4;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+        
+        .btn:hover {
+            background: #3367d6;
+        }
+        
+        .btn-secondary {
+            background: #f1f3f4;
+            color: #333;
+        }
+        
+        .btn-secondary:hover {
+            background: #e8eaed;
+        }
+        
+        .main-content {
+            display: flex;
+            gap: 20px;
+            height: calc(100% - 70px);
+        }
+        
+        .map-container {
+            flex: 1;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+        
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .sidebar {
+            width: 300px;
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            overflow-y: auto;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .sidebar h2 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .route-list {
+            list-style: none;
+            margin-bottom: 20px;
+        }
+        
+        .route-item {
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            background: #f1f3f4;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .route-item:hover {
+            background: #e8eaed;
+        }
+        
+        .route-item.active {
+            background: #e8f0fe;
+            border-left: 4px solid #4285f4;
+        }
+        
+        .route-name {
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+        
+        .route-details {
+            font-size: 12px;
+            color: #70757a;
+        }
+        
+        .file-dropzone {
+            border: 2px dashed #ccc;
+            padding: 20px;
+            text-align: center;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            transition: border 0.3s;
+        }
+        
+        .file-dropzone:hover {
+            border-color: #4285f4;
+        }
+        
+        .file-dropzone p {
+            margin-bottom: 10px;
+            color: #70757a;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top: 4px solid #4285f4;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .mapboxgl-popup {
+            max-width: 200px;
+        }
+        
+        .mapboxgl-popup-content {
+            padding: 10px;
+            font-size: 14px;
+        }
+        
+        .alert {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            color: #721c24;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .alert-success {
+            color: #155724;
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+            box-shadow: 0 1px 5px rgba(0, 0, 0, 0.2);
+            z-index: 1;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        
+        .legend-color {
+            width: 15px;
+            height: 15px;
+            margin-right: 10px;
+            border-radius: 50%;
+        }
+        
+        .legend-label {
+            font-size: 12px;
+            color: #333;
+        }
+
+        /* 自定义标记样式 */
+        .marker {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        
+        .start-marker {
+            background-color: #34a853;
+        }
+        
+        .end-marker {
+            background-color: #ea4335;
+        }
+        
+        /* 用户信息样式 */
+        .user-info {
+            background: #e8f0fe;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .user-name {
+            font-weight: 600;
+            font-size: 16px;
+            color: #1a73e8;
+            margin-bottom: 5px;
+        }
+        
+        .route-count {
+            font-size: 14px;
+            color: #5f6368;
+        }
+    </style>
+    <script src="../../js/auth.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>我的路线可视化</h1>
+            <div class="controls">
+                <button class="btn btn-secondary" id="clearBtn">清除所有路线</button>
+                <button class="btn btn-secondary" id="backBtn">返回</button>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="sidebar">
+                <h2>已点亮路线</h2>
+                <div id="userInfo" class="user-info">
+                    <div class="user-name">加载中...</div>
+                    <div class="route-count">加载中...</div>
+                </div>
+                
+                <ul class="route-list" id="routeList">
+                    <!-- 路线列表将在这里动态生成 -->
+                </ul>
+            </div>
+            
+            <div class="map-container">
+                <div id="map"></div>
+                
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #4285f4;"></div>
+                        <div class="legend-label">路线轨迹</div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #34a853;"></div>
+                        <div class="legend-label">起点</div>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #ea4335;"></div>
+                        <div class="legend-label">终点</div>
+                    </div>
+                </div>
+                
+                <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 全局变量
+        let map;
+        const routes = [];
+        let routeIdCounter = 0;
+        let markers = []; // 存储所有标记对象，便于清除
+        
+        // Mapbox访问令牌
+        const mapboxToken = 'pk.eyJ1IjoieWlob25nMDYxOCIsImEiOiJja2J3M28xbG4wYzl0MzJxZm0ya2Fua2p2In0.PNKfkeQwYuyGOTT_x9BJ4Q';
+        
+        // 初始化地图
+        function initMap() {
+            mapboxgl.accessToken = mapboxToken;
+            
+            console.log('开始初始化地图...');
+            
+            map = new mapboxgl.Map({
+                container: 'map',
+                style: 'mapbox://styles/mapbox/outdoors-v11', // 使用更适合徒步活动的底图样式
+                center: [114.177216, 22.302711], // 香港默认中心点
+                zoom: 11,
+                attributionControl: false // 关闭默认的attribution控件
+            });
+            
+            // 添加自定义attribution
+            map.addControl(new mapboxgl.AttributionControl({
+                compact: true
+            }), 'bottom-right');
+            
+            // 添加控件
+            map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+            map.addControl(new mapboxgl.ScaleControl(), 'bottom-left');
+            map.addControl(new mapboxgl.FullscreenControl(), 'top-right');
+            
+            // 监听地图加载错误
+            map.on('error', function(e) {
+                console.error('Mapbox地图错误:', e.error);
+                showAlert('地图加载错误: ' + (e.error ? e.error.message : '未知错误'));
+            });
+            
+            // 地图加载完成后的处理
+            map.once('load', function() {
+                console.log('地图已完全加载！');
+                // 等待地图完全加载后再加载用户路线
+                loadUserCompletedRoutes();
+            });
+            
+            // 添加额外的监听，确保在样式加载后也能正确处理
+            map.on('style.load', function() {
+                console.log('地图样式已加载！');
+            });
+        }
+        
+        // 将路线添加到地图
+        function addRouteToMap(route) {
+            try {
+                showLoading(); // 显示加载指示器
+                
+                const routeId = route.id;
+                const sourceId = routeId + '_source';
+                const layerId = routeId + '_layer';
+                
+                console.log(`添加路线 ${route.name} 到地图, 坐标点数量: ${route.coordinates.length}`);
+                
+                // 确保地图已加载
+                if (!map.loaded()) {
+                    console.log('地图尚未加载完成，等待加载...');
+                    map.once('load', () => {
+                        console.log(`地图已加载，现在添加路线: ${route.name}`);
+                        addRouteToMap(route);
+                    });
+                    hideLoading(); // 确保隐藏加载指示器，因为后续会再次调用此函数
+                    return;
+                }
+                
+                // 先检查是否有同名图层和数据源，并移除它们
+                if (map.getLayer(layerId)) {
+                    console.log(`移除已存在的图层: ${layerId}`);
+                    map.removeLayer(layerId);
+                }
+                
+                if (map.getSource(sourceId)) {
+                    console.log(`移除已存在的数据源: ${sourceId}`);
+                    map.removeSource(sourceId);
+                }
+                
+                // 添加路线数据源
+                map.addSource(sourceId, {
+                    type: 'geojson',
+                    data: {
+                        type: 'Feature',
+                        properties: {},
+                        geometry: {
+                            type: 'LineString',
+                            coordinates: route.coordinates
+                        }
+                    }
+                });
+                
+                // 添加路线图层
+                map.addLayer({
+                    id: layerId,
+                    type: 'line',
+                    source: sourceId,
+                    layout: {
+                        'line-join': 'round',
+                        'line-cap': 'round',
+                        'visibility': route.visible ? 'visible' : 'none'
+                    },
+                    paint: {
+                        'line-color': route.color,
+                        'line-width': 4,
+                        'line-opacity': 0.8
+                    }
+                });
+                
+                // 添加起点和终点标记
+                addMarkers(route);
+                
+                // 调整地图视图以适应所有路线
+                fitMapToRoutes();
+                
+                console.log(`路线 ${route.name} 已成功添加到地图`);
+                hideLoading(); // 完成后隐藏加载指示器
+            } catch (error) {
+                console.error('添加路线到地图失败:', error);
+                showAlert('添加路线到地图失败: ' + error.message);
+                hideLoading(); // 确保在发生错误时也隐藏加载指示器
+            }
+        }
+        
+        // 一次性添加所有路线到地图
+        function addAllRoutesToMap() {
+            showLoading();
+            
+            if (routes.length === 0) {
+                console.log('没有路线可添加');
+                hideLoading();
+                return;
+            }
+            
+            console.log(`添加 ${routes.length} 条路线到地图...`);
+            
+            // 创建一个计数器来跟踪异步操作完成情况
+            let addedCount = 0;
+            
+            routes.forEach(route => {
+                try {
+                    const routeId = route.id;
+                    const sourceId = routeId + '_source';
+                    const layerId = routeId + '_layer';
+                    
+                    // 处理无效路线
+                    if (!route.coordinates || route.coordinates.length < 2) {
+                        console.warn(`路线 ${route.name} 坐标不足，跳过`);
+                        addedCount++;
+                        if (addedCount === routes.length) hideLoading();
+                        return;
+                    }
+                    
+                    // 添加路线数据源
+                    if (!map.getSource(sourceId)) {
+                        map.addSource(sourceId, {
+                            type: 'geojson',
+                            data: {
+                                type: 'Feature',
+                                properties: {},
+                                geometry: {
+                                    type: 'LineString',
+                                    coordinates: route.coordinates
+                                }
+                            }
+                        });
+                    }
+                    
+                    // 添加路线图层
+                    if (!map.getLayer(layerId)) {
+                        map.addLayer({
+                            id: layerId,
+                            type: 'line',
+                            source: sourceId,
+                            layout: {
+                                'line-join': 'round',
+                                'line-cap': 'round',
+                                'visibility': route.visible ? 'visible' : 'none'
+                            },
+                            paint: {
+                                'line-color': route.color,
+                                'line-width': 4,
+                                'line-opacity': 0.8
+                            }
+                        });
+                    }
+                    
+                    // 添加标记
+                    addMarkers(route);
+                    
+                    addedCount++;
+                    if (addedCount === routes.length) {
+                        fitMapToRoutes();
+                        hideLoading();
+                    }
+                } catch (error) {
+                    console.error(`添加路线 ${route.name} 时出错:`, error);
+                    addedCount++;
+                    if (addedCount === routes.length) hideLoading();
+                }
+            });
+        }
+        
+        // 调整地图视图以适应所有可见路线
+        function fitMapToRoutes() {
+            const visibleRoutes = routes.filter(route => route.visible);
+            
+            if (visibleRoutes.length > 0) {
+                try {
+                    const bounds = new mapboxgl.LngLatBounds();
+                    let hasValidCoords = false;
+                    
+                    visibleRoutes.forEach(route => {
+                        if (route.coordinates && Array.isArray(route.coordinates) && route.coordinates.length > 0) {
+                            route.coordinates.forEach(coord => {
+                                // 严格检查坐标点是否有效
+                                if (coord && 
+                                    Array.isArray(coord) && 
+                                    coord.length >= 2 && 
+                                    typeof coord[0] === 'number' && 
+                                    typeof coord[1] === 'number' && 
+                                    !isNaN(coord[0]) && 
+                                    !isNaN(coord[1]) &&
+                                    Math.abs(coord[0]) <= 180 && // 经度范围检查
+                                    Math.abs(coord[1]) <= 90) {  // 纬度范围检查
+                                    
+                                    try {
+                                        bounds.extend(coord);
+                                        hasValidCoords = true;
+                                    } catch (e) {
+                                        console.error(`无法扩展边界，无效坐标点: [${coord[0]}, ${coord[1]}]`, e);
+                                    }
+                                } else {
+                                    console.warn(`跳过无效坐标点: ${JSON.stringify(coord)}`);
+                                }
+                            });
+                        }
+                    });
+                    
+                    if (hasValidCoords) {
+                        map.fitBounds(bounds, {
+                            padding: 50,
+                            maxZoom: 15
+                        });
+                        console.log('地图视图已调整以适应所有路线');
+                    } else {
+                        console.warn('没有找到有效的坐标点来调整地图视图');
+                        // 设置默认视图
+                        map.flyTo({
+                            center: [114.177216, 22.302711], // 香港默认中心点
+                            zoom: 11
+                        });
+                        console.log('已设置为默认地图视图');
+                    }
+                } catch (error) {
+                    console.error('调整地图视图失败:', error);
+                    // 出错时也设置默认视图
+                    map.flyTo({
+                        center: [114.177216, 22.302711],
+                        zoom: 11
+                    });
+                }
+            }
+        }
+        
+        // 添加起点和终点标记
+        function addMarkers(route) {
+            if (!route || !route.coordinates || !Array.isArray(route.coordinates)) {
+                console.warn(`路线 ${route ? route.name : '未知'} 没有有效的坐标数组`);
+                return;
+            }
+            
+            if (route.coordinates.length < 2) {
+                console.warn(`路线 ${route.name} 坐标点不足以创建起点和终点标记`);
+                return;
+            }
+            
+            try {
+                // 验证起点坐标
+                const startCoord = route.coordinates[0];
+                const endCoord = route.coordinates[route.coordinates.length - 1];
+                
+                if (!isValidCoordinate(startCoord)) {
+                    console.warn(`路线 ${route.name} 的起点坐标无效: ${JSON.stringify(startCoord)}`);
+                    return;
+                }
+                
+                if (!isValidCoordinate(endCoord)) {
+                    console.warn(`路线 ${route.name} 的终点坐标无效: ${JSON.stringify(endCoord)}`);
+                    return;
+                }
+                
+                // 起点标记
+                const startMarker = document.createElement('div');
+                startMarker.className = 'marker start-marker';
+                
+                const startMapMarker = new mapboxgl.Marker(startMarker)
+                    .setLngLat(startCoord)
+                    .setPopup(new mapboxgl.Popup().setHTML(`<strong>${route.name}</strong><p>起点</p>`))
+                    .addTo(map);
+                
+                // 终点标记
+                const endMarker = document.createElement('div');
+                endMarker.className = 'marker end-marker';
+                
+                const endMapMarker = new mapboxgl.Marker(endMarker)
+                    .setLngLat(endCoord)
+                    .setPopup(new mapboxgl.Popup().setHTML(`<strong>${route.name}</strong><p>终点</p>`))
+                    .addTo(map);
+                
+                // 存储标记引用，便于后续清除
+                markers.push(startMapMarker, endMapMarker);
+                
+                console.log(`已为路线 ${route.name} 添加起点和终点标记`);
+            } catch (error) {
+                console.error(`为路线 ${route.name} 添加标记失败:`, error);
+            }
+        }
+        
+        // 辅助函数：检查坐标是否有效
+        function isValidCoordinate(coord) {
+            return coord && 
+                   Array.isArray(coord) && 
+                   coord.length >= 2 && 
+                   typeof coord[0] === 'number' && 
+                   typeof coord[1] === 'number' && 
+                   !isNaN(coord[0]) && 
+                   !isNaN(coord[1]) &&
+                   Math.abs(coord[0]) <= 180 && 
+                   Math.abs(coord[1]) <= 90;
+        }
+        
+        // 更新路线列表UI
+        function updateRouteList() {
+            const routeList = document.getElementById('routeList');
+            routeList.innerHTML = '';
+            
+            if (routes.length === 0) {
+                routeList.innerHTML = '<p>暂无点亮路线</p>';
+                return;
+            }
+            
+            routes.forEach(route => {
+                const li = document.createElement('li');
+                li.className = 'route-item';
+                if (route.visible) {
+                    li.classList.add('active');
+                }
+                
+                li.innerHTML = `
+                    <div class="route-name">
+                        <span style="display:inline-block;width:10px;height:10px;background:${route.color};margin-right:5px;border-radius:50%;"></span>
+                        ${route.name}
+                    </div>
+                    <div class="route-details">${route.subDistrict || '未知区域'}</div>
+                `;
+                
+                li.addEventListener('click', function() {
+                    toggleRouteVisibility(route.id);
+                });
+                
+                routeList.appendChild(li);
+            });
+        }
+        
+        // 切换路线可见性
+        function toggleRouteVisibility(routeId) {
+            const route = routes.find(r => r.id === routeId);
+            if (route) {
+                route.visible = !route.visible;
+                
+                const layerId = routeId + '_layer';
+                if (map.getLayer(layerId)) {
+                    map.setLayoutProperty(
+                        layerId,
+                        'visibility',
+                        route.visible ? 'visible' : 'none'
+                    );
+                    
+                    updateRouteList();
+                    fitMapToRoutes();
+                } else {
+                    console.warn(`图层 ${layerId} 不存在`);
+                }
+            }
+        }
+        
+        // 清除所有路线
+        function clearAllRoutes() {
+            try {
+                showLoading(); // 显示加载指示器
+                
+                // 移除所有路线图层和数据源
+                routes.forEach(route => {
+                    const layerId = route.id + '_layer';
+                    const sourceId = route.id + '_source';
+                    
+                    if (map.getLayer(layerId)) {
+                        map.removeLayer(layerId);
+                    }
+                    
+                    if (map.getSource(sourceId)) {
+                        map.removeSource(sourceId);
+                    }
+                });
+                
+                // 移除所有标记
+                markers.forEach(marker => {
+                    if (marker) marker.remove();
+                });
+                markers = [];
+                
+                // 清空路线数组
+                routes.length = 0;
+                updateRouteList();
+                updateUserInfo();
+                
+                console.log('已清除所有路线和标记');
+                hideLoading(); // 隐藏加载指示器
+            } catch (error) {
+                console.error('清除路线失败:', error);
+                showAlert('清除路线失败: ' + error.message);
+                hideLoading(); // 确保在出错时也隐藏加载指示器
+            }
+        }
+        
+        // 生成随机颜色
+        function getRandomColor() {
+            const colors = [
+                '#4285f4', // 蓝色
+                '#ea4335', // 红色
+                '#fbbc05', // 黄色
+                '#34a853', // 绿色
+                '#8e44ad', // 紫色
+                '#e67e22', // 橙色
+                '#16a085', // 青色
+                '#c0392b', // 深红色
+                '#3498db'  // 浅蓝色
+            ];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+        
+        // 显示加载中状态
+        function showLoading() {
+            const overlay = document.getElementById('loadingOverlay');
+            if (overlay) {
+                overlay.style.display = 'flex';
+            }
+            console.log('加载中...');
+        }
+        
+        // 隐藏加载中状态
+        function hideLoading() {
+            const overlay = document.getElementById('loadingOverlay');
+            if (overlay) {
+                overlay.style.display = 'none';
+            }
+            console.log('加载完成');
+        }
+        
+        // 显示提示信息
+        function showAlert(message, type = 'error') {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = type === 'success' ? 'alert alert-success' : 'alert';
+            alertDiv.textContent = message;
+            
+            // 查找合适的地方插入提示
+            const sidebar = document.querySelector('.sidebar');
+            if (sidebar) {
+                // 如果有用户信息元素，在它后面插入
+                const userInfo = document.getElementById('userInfo');
+                if (userInfo) {
+                    sidebar.insertBefore(alertDiv, userInfo.nextSibling);
+                } else {
+                    // 否则在侧边栏开头插入
+                    sidebar.insertBefore(alertDiv, sidebar.firstChild);
+                }
+            }
+            
+            console.log(type === 'success' ? '成功' : '错误', message);
+            
+            // 5秒后自动移除提示
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 5000);
+        }
+        
+        // 加载用户已完成的路线
+        function loadUserCompletedRoutes() {
+            // 检查用户是否已登录
+            if (!isUserLoggedIn()) {
+                console.warn('用户未登录，无法获取已完成的路线');
+                showAlert('您尚未登录，请先登录以查看您的路线', 'warning');
+                hideLoading();
+                return;
+            }
+            
+            showLoading();
+            
+            // 获取当前用户名并更新UI
+            const username = getCurrentUsername() || '游客';
+            updateUserInfo(username, 0);
+            
+            // 从服务器获取用户已完成的路线
+            fetch('../../api/get_completed_routes.php')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        const completedRoutes = data.routes || [];
+                        console.log(`获取到 ${completedRoutes.length} 条已完成的路线`);
+                        
+                        // 更新用户信息
+                        updateUserInfo(username, completedRoutes.length);
+                        
+                        // 处理路线数据
+                        if (completedRoutes.length > 0) {
+                            processCompletedRoutes(completedRoutes);
+                        } else {
+                            showAlert('您还没有点亮任何路线', 'info');
+                            hideLoading();
+                        }
+                    } else {
+                        console.error('获取路线失败:', data.error || '未知错误');
+                        showAlert('获取路线数据失败: ' + (data.error || '未知错误'));
+                        hideLoading();
+                    }
+                })
+                .catch(error => {
+                    console.error('获取路线出错:', error);
+                    
+                    // 尝试从localStorage获取数据作为备选
+                    const storageKey = `userCompletedRoutes_${username}`;
+                    const localRoutes = JSON.parse(localStorage.getItem(storageKey) || '[]');
+                    
+                    if (localRoutes.length > 0) {
+                        console.log(`从本地存储获取到 ${localRoutes.length} 条路线数据`);
+                        processCompletedRoutes(localRoutes);
+                    } else {
+                        showAlert('获取路线数据出错: ' + error.message);
+                        hideLoading();
+                    }
+                });
+        }
+        
+        // 处理已完成的路线数据
+        function processCompletedRoutes(completedRoutes) {
+            try {
+                let validRoutes = 0;
+                
+                completedRoutes.forEach((route, index) => {
+                    try {
+                        if (route && route.points && Array.isArray(route.points) && route.points.length >= 2) {
+                            // 创建路线对象
+                            const routeId = 'route_' + (routeIdCounter++);
+                            const routeObj = {
+                                id: routeId,
+                                name: route.name || `路线 ${index + 1}`,
+                                subDistrict: route.subDistrict || '',
+                                color: getRandomColor(),
+                                visible: true,
+                                coordinates: []
+                            };
+                            
+                            // 转换坐标点格式
+                            route.points.forEach(point => {
+                                if (point && 
+                                    typeof point.lat === 'number' && 
+                                    typeof point.lon === 'number' && 
+                                    !isNaN(point.lat) && 
+                                    !isNaN(point.lon) && 
+                                    Math.abs(point.lon) <= 180 && 
+                                    Math.abs(point.lat) <= 90) {
+                                    
+                                    routeObj.coordinates.push([point.lon, point.lat]);
+                                }
+                            });
+                            
+                            // 确保路线有足够的有效坐标点
+                            if (routeObj.coordinates.length >= 2) {
+                                routes.push(routeObj);
+                                validRoutes++;
+                            } else {
+                                console.warn(`路线 "${route.name}" 没有足够的有效坐标点`);
+                            }
+                        }
+                    } catch (error) {
+                        console.error(`处理路线 ${index} 时出错:`, error);
+                    }
+                });
+                
+                // 更新UI
+                if (validRoutes > 0) {
+                    updateRouteList();
+                    addAllRoutesToMap();
+                    showAlert(`已成功加载 ${validRoutes} 条路线`, 'success');
+                } else {
+                    showAlert('没有找到有效的路线数据', 'warning');
+                }
+                
+                hideLoading();
+            } catch (error) {
+                console.error('处理路线数据时出错:', error);
+                showAlert('处理路线数据时出错: ' + error.message);
+                hideLoading();
+            }
+        }
+        
+        // 更新用户信息
+        function updateUserInfo(username = '未登录', routeCount = 0) {
+            const userInfoDiv = document.getElementById('userInfo');
+            if (userInfoDiv) {
+                const userNameDiv = userInfoDiv.querySelector('.user-name');
+                const routeCountDiv = userInfoDiv.querySelector('.route-count');
+                
+                if (userNameDiv) {
+                    userNameDiv.textContent = username || '未登录';
+                }
+                
+                if (routeCountDiv) {
+                    routeCountDiv.textContent = `已点亮 ${routeCount} 条路线`;
+                }
+            }
+        }
+        
+        // 返回上一页
+        function goBack() {
+            window.location.href = '../main/index.html';
+        }
+        
+        // 初始化页面
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始化地图
+            initMap();
+            
+            // 添加返回按钮点击事件
+            const backBtn = document.getElementById('backBtn');
+            if (backBtn) {
+                backBtn.addEventListener('click', goBack);
+            }
+            
+            // 添加清除按钮点击事件
+            const clearBtn = document.getElementById('clearBtn');
+            if (clearBtn) {
+                clearBtn.addEventListener('click', clearAllRoutes);
+            }
+        });
+    </script>
+</body>
+</html> 

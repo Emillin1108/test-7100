@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,500,700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-size: 14px;
+            background: #F5F7FA;
+            font-family: 'Roboto', sans-serif;
+            min-height: 100vh;
+        }
+
+        /* 顶部导航栏 */
+        .v3308_3307 {
+            width: 100%;
+            height: 80px;
+            background: #FFFFFF;
+            padding: 0;
+            position: fixed;
+            top: 0;
+            left: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        /* Logo容器 */
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-left: 50px;
+        }
+
+        .logo-image {
+            height: 40px;
+            width: auto;
+            object-fit: contain;
+        }
+
+        .logo-text {
+            color: #666666;
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        /* 导航按钮 */
+        .nav-buttons {
+            margin-right: 80px;
+            display: flex;
+            gap: 16px;
+        }
+
+        .nav-button {
+            padding: 8px 24px;
+            border-radius: 8px;
+            border: none;
+            background: transparent;
+            color: #333;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .nav-button:hover {
+            background: #F0F2F5;
+        }
+
+        /* 背景图片容器 */
+        .background-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            background: url("../../assets/v3308_3414.png") center/cover no-repeat;
+            opacity: 0.5;
+            z-index: -1;
+        }
+
+        /* 主容器调整 */
+        .main-container {
+            width: 100%;
+            min-height: 100vh;
+            padding-top: 80px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* 登录卡片增加背景模糊效果 */
+        .login-box {
+            width: 540px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 25px;
+            padding: 48px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .login-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #333;
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        /* 输入框 */
+        .input-field {
+            width: 100%;
+            height: 48px;
+            background: #F5F7FA;
+            border: 2px solid #E0E0E0;
+            border-radius: 12px;
+            padding: 0 16px;
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 32px;
+            transition: all 0.3s ease;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: #0F62FE;
+            background: #FFFFFF;
+            box-shadow: 0 0 0 4px rgba(15, 98, 254, 0.1);
+        }
+
+        /* 登录按钮 */
+        .login-button {
+            width: 100%;
+            height: 48px;
+            background: #0F62FE;
+            color: #FFFFFF;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .login-button:hover {
+            background: #0D56E0;
+        }
+
+        /* 状态消息样式 */
+        .status-message {
+            padding: 15px;
+            border-radius: 6px;
+            font-size: 14px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .status-message.success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .status-message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        
+        .status-message.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+
+        /* 添加响应式设计 */
+        @media screen and (max-width: 768px) {
+            .v3308_3307 {
+                height: auto;
+                padding: 10px;
+                flex-direction: column;
+            }
+            
+            .logo-container {
+                margin: 10px 0;
+            }
+            
+            .nav-buttons {
+                margin: 10px 0;
+            }
+            
+            .login-box {
+                width: 90%;
+                padding: 32px;
+            }
+            
+            .main-container {
+                padding: 20px;
+            }
+        }
+
+        @media screen and (max-width: 480px) {
+            .login-box {
+                width: 95%;
+                padding: 24px;
+            }
+            
+            .login-title {
+                font-size: 20px;
+            }
+            
+            .input-field {
+                height: 40px;
+                font-size: 14px;
+            }
+            
+            .login-button {
+                height: 40px;
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 添加背景图片容器 -->
+    <div class="background-container"></div>
+
+    <!-- 顶部导航栏 -->
+    <div class="v3308_3307">
+        <div class="logo-container">
+            <img src="../../assets/logo_output(1).pdf.png" 
+                 alt="Logo" 
+                 class="logo-image">
+            <span class="logo-text">IEST Running Page</span>
+        </div>
+        <div class="nav-buttons">
+            <button class="nav-button" onclick="window.location.href='../about/about.html'">关于我们</button>
+        </div>
+    </div>
+
+    <!-- 主容器 -->
+    <div class="main-container">
+        <div class="login-box">
+            <h1 class="login-title">请输入你的昵称</h1>
+            <div id="statusMessage" class="status-message"></div>
+            <input type="text" class="input-field" placeholder="输入昵称" id="nickname">
+            <button class="login-button" onclick="login()" id="loginButton">就叫这个</button>
+        </div>
+    </div>
+
+    <script src="../../js/auth.js"></script>
+    <script>
+        // 存储返回URL
+        let returnUrl = '';
+        
+        // 页面加载时获取返回URL
+        document.addEventListener('DOMContentLoaded', function() {
+            // 从URL参数中获取返回地址
+            const urlParams = new URLSearchParams(window.location.search);
+            returnUrl = urlParams.get('returnUrl') || '../main/index.html';
+            
+            // 检查会话Cookie是否存在
+            if (isUserLoggedIn()) {
+                // 已登录，直接重定向
+                window.location.href = returnUrl;
+            }
+        });
+
+        // 登录函数
+        async function login() {
+            const nicknameInput = document.getElementById('nickname');
+            const loginButton = document.getElementById('loginButton');
+            const username = nicknameInput.value.trim();
+            
+            if (!username) {
+                showStatus('请输入昵称', 'error');
+                return;
+            }
+            
+            try {
+                // 禁用按钮防止重复提交
+                loginButton.disabled = true;
+                showStatus('正在登录...', 'info');
+                
+                // 检查是否在本地开发环境
+                const isLocalDev = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
+                
+                let result;
+                
+                if (isLocalDev) {
+                    // 本地开发模式：模拟登录
+                    console.log('本地开发模式：模拟登录');
+                    
+                    // 创建一个简单的会话cookie (30天过期)
+                    const expiryDate = new Date();
+                    expiryDate.setDate(expiryDate.getDate() + 30);
+                    document.cookie = `userSession=dummy-session-id; expires=${expiryDate.toUTCString()}; path=/`;
+                    document.cookie = `username=${username}; expires=${expiryDate.toUTCString()}; path=/`;
+                    
+                    // 模拟API响应
+                    result = { success: true };
+                } else {
+                    // 正常模式：向服务器发送登录请求
+                    const response = await fetch('../../api/login.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ username })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    result = await response.json();
+                }
+                
+                if (result.success) {
+                    // 保存用户会话数据
+                    sessionStorage.setItem('currentUser', username);
+                    
+                    // 显示成功消息并重定向
+                    showStatus('登录成功！正在跳转...', 'success');
+                    setTimeout(() => {
+                        window.location.href = returnUrl;
+                    }, 1000);
+                } else {
+                    showStatus(result.error || '登录失败，请重试', 'error');
+                    loginButton.disabled = false;
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                showStatus('登录失败：' + error.message, 'error');
+                loginButton.disabled = false;
+            }
+        }
+        
+        // 显示状态消息
+        function showStatus(message, type) {
+            const statusElement = document.getElementById('statusMessage');
+            statusElement.textContent = message;
+            
+            // 清除旧的类
+            statusElement.classList.remove('success', 'error', 'info');
+            
+            // 添加新的类
+            if (type === 'success') {
+                statusElement.classList.add('success');
+            } else if (type === 'error') {
+                statusElement.classList.add('error');
+            } else if (type === 'info') {
+                statusElement.classList.add('info');
+            }
+            
+            // 显示消息
+            statusElement.style.display = 'block';
+            
+            // 如果是成功或错误消息，设置自动隐藏
+            if (type === 'success' || type === 'error') {
+                setTimeout(() => {
+                    statusElement.style.display = 'none';
+                }, 3000);
+            }
+        }
+
+        // 添加回车键登录功能
+        document.getElementById('nickname').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                login();
+            }
+        });
+    </script>
+</body>
+</html> 

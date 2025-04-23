@@ -1,0 +1,1418 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>路线点亮</title>
+    <!-- 使用Mapbox替代Leaflet -->
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mapbox/polyline@1.1.1/src/polyline.js"></script>
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,500,700&display=swap" rel="stylesheet">
+    <link href="../../css/main.css" rel="stylesheet">
+    <!-- 添加auth.js -->
+    <script src="../../js/auth.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-size: 14px;
+            background: #F5F7FA;
+            font-family: 'Roboto', sans-serif;
+            min-height: 100vh;
+        }
+
+        /* 顶部导航栏 - 更新样式 */
+        .v3308_3307 {
+            width: 100%;
+            height: 80px;
+            background: #FFFFFF;
+            padding: 0;
+            position: fixed;
+            top: 0;
+            left: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            margin-left: 80px;
+            gap: 12px;
+        }
+
+        .logo-image {
+            height: 40px;
+            width: auto;
+        }
+
+        .logo-text {
+            color: #666666;
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        .nav-buttons {
+            margin-right: 80px;
+            display: flex;
+            gap: 16px;
+        }
+
+        .nav-button {
+            padding: 8px 24px;
+            border-radius: 8px;
+            border: none;
+            background: transparent;
+            color: #333;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .nav-button:hover {
+            background: #F0F2F5;
+        }
+
+        /* 主容器 */
+        .main-container {
+            width: 100%;
+            min-height: 100vh;
+            padding-top: 80px;
+            background: #F5F7FA;
+        }
+
+        /* 内容包装器 */
+        .content-wrapper {
+            width: 100%;
+            max-width: 1440px;
+            padding: 24px 80px;
+            margin: 0 auto;
+            display: flex;
+            gap: 36px;
+        }
+
+        /* 左侧地图区域 */
+        .map-container {
+            flex: 1;
+            height: 640px;
+            background: #FFFFFF;
+            border-radius: 25px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* 地图样式 - 更新为Mapbox样式 */
+        #map {
+            width: 100%;
+            height: 100%;
+            border-radius: 25px;
+            z-index: 1;
+        }
+
+        /* Mapbox标记样式 */
+        .mapboxgl-marker {
+            cursor: pointer;
+        }
+
+        .start-marker, .end-marker {
+            border-radius: 50%;
+            width: 12px;
+            height: 12px;
+        }
+
+        .start-marker {
+            background-color: #4CAF50;
+        }
+
+        .end-marker {
+            background-color: #F44336;
+        }
+
+        /* 右侧面板 */
+        .right-panel {
+            width: 350px;
+            background: #FFFFFF;
+            border-radius: 25px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            height: 640px;
+            position: relative;
+        }
+
+        /* 按钮容器 */
+        .button-container {
+            position: absolute;
+            bottom: 24px;
+            left: 24px;
+            right: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* 按钮样式 */
+        .button {
+            width: 100%;
+            height: 48px;
+            border-radius: 12px;
+            border: none;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .confirm-btn {
+            background: #0F62FE;
+            color: white;
+        }
+
+        .confirm-btn:hover {
+            background: #0044CC;
+        }
+
+        .cancel-btn {
+            background: #F5F7FA;
+            color: #333;
+            border: 1px solid #E0E0E0;
+        }
+
+        .cancel-btn:hover {
+            background: #E8E8E8;
+        }
+
+        /* 成功提示模态框 */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+            backdrop-filter: blur(4px);
+        }
+
+        .success-modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            text-align: center;
+            z-index: 1000;
+            width: 320px;
+        }
+
+        .success-icon {
+            width: 64px;
+            height: 64px;
+            background: #0F62FE;
+            border-radius: 50%;
+            margin: 0 auto 24px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .success-icon::after {
+            content: '';
+            width: 24px;
+            height: 12px;
+            border: 3px solid white;
+            border-top: none;
+            border-right: none;
+            transform: rotate(-45deg);
+            margin-top: -4px;
+        }
+
+        .modal-text {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 24px;
+            font-weight: 500;
+        }
+
+        .return-btn {
+            background: #0F62FE;
+            color: white;
+            padding: 12px 32px;
+            border-radius: 8px;
+            border: none;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .return-btn:hover {
+            background: #0044CC;
+        }
+
+        .modal-overlay.show, .success-modal.show {
+            display: block;
+        }
+
+        /* 搜索和选择区域 */
+        .selection-area {
+            margin-bottom: auto;
+            padding: 20px 0;
+        }
+
+        .search-container {
+            margin-bottom: 24px;
+        }
+
+        .search-input {
+            width: 100%;
+            height: 48px;
+            background: #F5F7FA;
+            border: 2px solid #E0E0E0;
+            border-radius: 12px;
+            padding: 0 16px;
+            font-size: 16px;
+            color: #333;
+            transition: all 0.3s ease;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #0F62FE;
+            background: #FFFFFF;
+            box-shadow: 0 0 0 4px rgba(15, 98, 254, 0.1);
+        }
+
+        .dropdown-group {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .dropdown-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .dropdown-select {
+            width: 100%;
+            height: 48px;
+            background: #F5F7FA;
+            border: 2px solid #E0E0E0;
+            border-radius: 12px;
+            padding: 0 16px;
+            font-size: 16px;
+            color: #333;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .dropdown-select:focus {
+            outline: none;
+            border-color: #0F62FE;
+            background: #FFFFFF;
+            box-shadow: 0 0 0 4px rgba(15, 98, 254, 0.1);
+        }
+
+        /* 添加响应式设计 */
+        @media screen and (max-width: 1200px) {
+            .content-wrapper {
+                flex-direction: column;
+            }
+            
+            .map-container {
+                width: 100%;
+                height: 50vh;
+            }
+            
+            .right-panel {
+                width: 100%;
+                padding: 20px;
+            }
+        }
+
+        @media screen and (max-width: 768px) {
+            .nav-buttons {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .nav-button {
+                width: 100%;
+            }
+            
+            .route-info {
+                padding: 15px;
+            }
+            
+            .route-title {
+                font-size: 18px;
+            }
+            
+            .route-description {
+                font-size: 14px;
+            }
+        }
+
+        @media screen and (max-width: 480px) {
+            .route-info {
+                padding: 10px;
+            }
+            
+            .route-title {
+                font-size: 16px;
+            }
+            
+            .route-description {
+                font-size: 12px;
+            }
+            
+            .light-button {
+                padding: 8px 16px;
+                font-size: 14px;
+            }
+        }
+
+        /* 新增：浏览模式按钮样式 */
+        .browse-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            background: white;
+            border: none;
+            border-radius: 6px;
+            padding: 10px 15px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            transition: all 0.3s;
+        }
+        
+        .browse-btn:hover {
+            background: #f0f0f0;
+        }
+        
+        .browse-btn svg {
+            margin-right: 8px;
+            width: 18px;
+            height: 18px;
+        }
+        
+        .browse-btn.active {
+            background: #0F62FE;
+            color: white;
+        }
+        
+        .browse-btn.active:hover {
+            background: #0D56E0;
+        }
+        
+        /* 未点亮路线样式 */
+        .unfinished-route {
+            cursor: pointer;
+        }
+        
+        /* 选中路线样式 */
+        .selected-route {
+            cursor: pointer;
+        }
+        
+        /* 浏览模式提示框 */
+        .browse-tooltip {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            text-align: center;
+            display: none;
+        }
+        
+        .browse-tooltip.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部导航栏 -->
+    <div class="v3308_3307">
+        <div class="logo-container">
+            <img src="../../assets/logo_output(1).pdf.png" alt="Logo" class="logo-image">
+            <span class="logo-text">IEST running page</span>
+        </div>
+        <div class="nav-buttons">
+            <button class="nav-button" onclick="window.location.href='../about/about.html'">关于我们</button>
+            <button class="nav-button" onclick="window.location.href='../user/profile.html'">我的</button>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="content-wrapper">
+            <!-- 左侧地图区域 -->
+            <div class="map-container">
+                <div id="map" style="width: 100%; height: 100%;"></div>
+                
+                <!-- 浏览未点亮路线按钮 -->
+                <button class="browse-btn" id="browseBtn">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="22" y1="12" x2="18" y2="12"></line>
+                        <line x1="6" y1="12" x2="2" y2="12"></line>
+                        <line x1="12" y1="6" x2="12" y2="2"></line>
+                        <line x1="12" y1="22" x2="12" y2="18"></line>
+                    </svg>
+                    浏览未点亮路线
+                </button>
+                
+                <!-- 浏览模式提示框 -->
+                <div class="browse-tooltip" id="browseTooltip">
+                    点击地图上的路线进行选择，或再次点击按钮退出浏览模式
+                </div>
+            </div>
+
+            <!-- 右侧面板 -->
+            <div class="right-panel">
+                <!-- 搜索和选择区域 -->
+                <div class="selection-area">
+                    <div class="search-container">
+                        <input type="text" class="search-input" placeholder="搜索路线...">
+                    </div>
+                    <div class="dropdown-group">
+                        <div>
+                            <div class="dropdown-label">选择地区</div>
+                            <select class="dropdown-select" id="district">
+                                <option value="">请选择地区</option>
+                            </select>
+                        </div>
+                        <div>
+                            <div class="dropdown-label">选择分区</div>
+                            <select class="dropdown-select" id="subDistrict">
+                                <option value="">请选择分区</option>
+                            </select>
+                        </div>
+                        <div>
+                            <div class="dropdown-label">选择路线</div>
+                            <select class="dropdown-select" id="route">
+                                <option value="">请选择路线</option>
+                            </select>
+                        </div>
+                    </div>
+                    <!-- 添加加载状态显示 -->
+                    <div id="loadingStatus" style="margin-top: 15px; font-size: 14px; color: #666; text-align: center; display: none;">
+                        正在加载路线数据，请稍候...
+                    </div>
+                </div>
+
+                <!-- 按钮容器 -->
+                <div class="button-container">
+                    <button class="button confirm-btn" onclick="confirmRoute()">确认点亮</button>
+                    <button class="button cancel-btn" onclick="cancelRoute()">取消</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 成功提示模态框 -->
+    <div class="modal-overlay" id="modalOverlay"></div>
+    <div class="success-modal" id="successModal">
+        <div class="success-icon"></div>
+        <div class="modal-text">路线点亮成功！</div>
+        <button class="return-btn" onclick="goToMainPage()">返回主页</button>
+    </div>
+
+    <script>
+        // 定义全局变量
+        let districtData = {};
+        let routeCoordinates = {};
+        let map;
+        let currentRouteSource = null;
+        let currentRouteLayer = null;
+        let currentStartMarker = null;
+        let currentEndMarker = null;
+        let browseMode = false;
+        let completedRouteNames = [];
+        let allUnfinishedRoutes = [];
+
+        // 加载路线数据
+        async function loadRouteData() {
+            try {
+                // 显示加载提示
+                const confirmBtn = document.querySelector('.confirm-btn');
+                const cancelBtn = document.querySelector('.cancel-btn');
+                const loadingStatus = document.getElementById('loadingStatus');
+                
+                if (confirmBtn) confirmBtn.disabled = true;
+                if (cancelBtn) cancelBtn.disabled = true;
+                if (loadingStatus) loadingStatus.style.display = 'block';
+                
+                console.log('开始加载路线数据...');
+                const startTime = performance.now();
+                
+                const response = await fetch('../../data/routes.json');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                if (loadingStatus) loadingStatus.textContent = '正在解析数据...';
+                const data = await response.json();
+                
+                const endTime = performance.now();
+                console.log(`加载完成，用时 ${(endTime - startTime) / 1000} 秒`);
+                console.log('加载到routes.json数据:', Object.keys(data));
+                
+                if (loadingStatus) loadingStatus.textContent = '正在处理路线数据...';
+                
+                // 转换数据结构
+                districtData = {};
+                routeCoordinates = {};
+                
+                for (const [districtKey, district] of Object.entries(data)) {
+                    console.log(`处理地区: ${districtKey}`, district);
+                    
+                    districtData[districtKey] = {
+                        name: district.name || districtKey,
+                        subDistricts: {}
+                    };
+                    
+                    if (!district.subDistricts) {
+                        console.warn(`地区 ${districtKey} 没有有效的subDistricts属性`);
+                        continue;
+                    }
+                    
+                    for (const [subDistrictKey, subDistrict] of Object.entries(district.subDistricts)) {
+                        console.log(`处理分区: ${subDistrictKey}`, subDistrict);
+                        
+                        districtData[districtKey].subDistricts[subDistrictKey] = subDistrict.name || subDistrictKey;
+                        
+                        if (!routeCoordinates[subDistrictKey]) {
+                            routeCoordinates[subDistrictKey] = {};
+                        }
+                        
+                        if (!subDistrict.routes) {
+                            console.warn(`分区 ${subDistrictKey} 没有有效的routes属性`);
+                            continue;
+                        }
+                        
+                        for (const [routeName, routeData] of Object.entries(subDistrict.routes)) {
+                            console.log(`处理路线: ${routeName}`, typeof routeData, Array.isArray(routeData) ? routeData.length : 'not array');
+                            
+                            // 处理不同格式的路线数据
+                            if (Array.isArray(routeData)) {
+                                // 直接是坐标数组 [lat, lng]
+                                routeCoordinates[subDistrictKey][routeName] = {
+                                    coordinates: routeData
+                                };
+                            } else if (typeof routeData === 'object' && routeData.coordinates) {
+                                // 对象格式，包含coordinates属性
+                                routeCoordinates[subDistrictKey][routeName] = routeData;
+                            } else {
+                                console.warn(`路线 ${routeName} 数据格式无效`, routeData);
+                            }
+                        }
+                    }
+                }
+                
+                console.log('处理后的地区数据:', districtData);
+                console.log('路线数据准备完成，更新地区下拉框');
+                
+                if (loadingStatus) loadingStatus.style.display = 'none';
+                
+                // 更新地区下拉框
+                updateDistrictSelect();
+                
+                // 启用按钮
+                if (confirmBtn) confirmBtn.disabled = false;
+                if (cancelBtn) cancelBtn.disabled = false;
+
+                // 如果已完成路线尚未加载，则加载
+                if (completedRouteNames.length === 0) {
+                    await loadCompletedRoutes();
+                }
+            } catch (error) {
+                console.error('加载路线数据失败:', error);
+                
+                const loadingStatus = document.getElementById('loadingStatus');
+                if (loadingStatus) {
+                    loadingStatus.textContent = '数据加载失败，请刷新重试';
+                    loadingStatus.style.color = '#ff3333';
+                }
+                
+                alert('加载路线数据失败: ' + error.message + '\n请刷新页面重试');
+                
+                // 启用按钮
+                const confirmBtn = document.querySelector('.confirm-btn');
+                const cancelBtn = document.querySelector('.cancel-btn');
+                if (confirmBtn) confirmBtn.disabled = false;
+                if (cancelBtn) cancelBtn.disabled = false;
+            }
+        }
+
+        // 更新地区下拉框
+        function updateDistrictSelect() {
+            const districtSelect = document.getElementById('district');
+            districtSelect.innerHTML = '<option value="">请选择地区</option>';
+            
+            for (const [key, value] of Object.entries(districtData)) {
+                const option = new Option(value.name, key);
+                districtSelect.add(option);
+            }
+        }
+
+        // 更新分区下拉框
+        function updateSubDistricts() {
+            const selectedDistrict = document.getElementById('district').value;
+            const subDistrictSelect = document.getElementById('subDistrict');
+            subDistrictSelect.innerHTML = '<option value="">请选择分区</option>';
+            document.getElementById('route').innerHTML = '<option value="">请选择路线</option>';
+
+            if (selectedDistrict && districtData[selectedDistrict]) {
+                const subDistricts = districtData[selectedDistrict].subDistricts;
+                for (const [key, value] of Object.entries(subDistricts)) {
+                    const option = new Option(value, key);
+                    subDistrictSelect.add(option);
+                }
+            }
+            
+            clearCurrentRoute();
+        }
+
+        // 更新路线下拉框
+        function updateRoutes() {
+            const selectedSubDistrict = document.getElementById('subDistrict').value;
+            const routeSelect = document.getElementById('route');
+            routeSelect.innerHTML = '<option value="">请选择路线</option>';
+
+            if (selectedSubDistrict && routeCoordinates[selectedSubDistrict]) {
+                Object.keys(routeCoordinates[selectedSubDistrict]).forEach(route => {
+                    const option = new Option(route, route);
+                    routeSelect.add(option);
+                });
+            }
+            
+            clearCurrentRoute();
+        }
+
+        // 显示选中的路线
+        function showSelectedRoute() {
+            const selectedSubDistrict = document.getElementById('subDistrict').value;
+            const selectedRoute = document.getElementById('route').value;
+            
+            clearCurrentRoute();
+
+            if (!selectedSubDistrict || !selectedRoute) {
+                return;
+            }
+
+            console.log('显示路线:', selectedSubDistrict, selectedRoute);
+            console.log('路线数据:', routeCoordinates[selectedSubDistrict]?.[selectedRoute]);
+            
+            // 获取路线数据
+            const routeData = routeCoordinates[selectedSubDistrict]?.[selectedRoute];
+            if (!routeData) {
+                console.error('未找到路线数据');
+                return;
+            }
+            
+            // 处理不同格式的路线数据
+            let coordinates;
+            if (Array.isArray(routeData)) {
+                // 直接是坐标数组
+                coordinates = routeData;
+            } else if (typeof routeData === 'object') {
+                // 对象格式，尝试获取coordinates
+                coordinates = routeData.coordinates;
+            } else {
+                console.error('无效的路线数据格式:', routeData);
+                return;
+            }
+            
+            if (!coordinates || !Array.isArray(coordinates) || coordinates.length === 0) {
+                console.error('路线坐标无效或为空');
+                return;
+            }
+            
+            console.log('路线坐标:', coordinates.length, coordinates[0]);
+            
+            try {
+                // 将Leaflet格式的坐标[lat, lng]转换为Mapbox格式的坐标[lng, lat]
+                const mapboxCoordinates = coordinates.map(coord => {
+                    // 检查坐标格式
+                    if (Array.isArray(coord) && coord.length >= 2) {
+                        return [coord[1], coord[0]]; // [lat, lng] -> [lng, lat]
+                    } else if (typeof coord === 'object' && 'lat' in coord && 'lng' in coord) {
+                        return [coord.lng, coord.lat]; // {lat, lng} -> [lng, lat]
+                    } else if (typeof coord === 'object' && 'lat' in coord && 'lon' in coord) {
+                        return [coord.lon, coord.lat]; // {lat, lon} -> [lng, lat]
+                    } else {
+                        console.warn('无效坐标格式:', coord);
+                        return null;
+                    }
+                }).filter(coord => coord !== null);
+                
+                if (mapboxCoordinates.length === 0) {
+                    console.error('转换后的坐标为空');
+                    return;
+                }
+                
+                // 添加路线源
+                if (map.getSource('route-source')) {
+                    map.getSource('route-source').setData({
+                        type: 'Feature',
+                        properties: {},
+                        geometry: {
+                            type: 'LineString',
+                            coordinates: mapboxCoordinates
+                        }
+                    });
+                } else {
+                    map.addSource('route-source', {
+                        type: 'geojson',
+                        data: {
+                            type: 'Feature',
+                            properties: {},
+                            geometry: {
+                                type: 'LineString',
+                                coordinates: mapboxCoordinates
+                            }
+                        }
+                    });
+                    
+                    // 添加路线图层
+                    map.addLayer({
+                        id: 'route-line',
+                        type: 'line',
+                        source: 'route-source',
+                        layout: {
+                            'line-join': 'round',
+                            'line-cap': 'round'
+                        },
+                        paint: {
+                            'line-color': '#0F62FE',
+                            'line-width': 5,
+                            'line-opacity': 0.8
+                        }
+                    });
+                }
+                
+                currentRouteSource = 'route-source';
+                currentRouteLayer = 'route-line';
+                
+                // 添加起点和终点标记
+                // 创建起点元素
+                const startEl = document.createElement('div');
+                startEl.className = 'start-marker';
+                
+                // 创建终点元素
+                const endEl = document.createElement('div');
+                endEl.className = 'end-marker';
+                
+                // 创建起点标记
+                currentStartMarker = new mapboxgl.Marker(startEl)
+                    .setLngLat(mapboxCoordinates[0])
+                    .addTo(map);
+                
+                // 创建终点标记
+                currentEndMarker = new mapboxgl.Marker(endEl)
+                    .setLngLat(mapboxCoordinates[mapboxCoordinates.length - 1])
+                    .addTo(map);
+                
+                // 调整地图视图以显示整个路线
+                const bounds = new mapboxgl.LngLatBounds();
+                mapboxCoordinates.forEach(coord => bounds.extend(coord));
+                
+                map.fitBounds(bounds, {
+                    padding: 50,
+                    maxZoom: 16
+                });
+                
+                console.log('路线显示成功');
+            } catch (error) {
+                console.error('显示路线时出错:', error);
+            }
+        }
+
+        // 清除当前路线
+        function clearCurrentRoute() {
+            if (currentRouteLayer && map.getLayer(currentRouteLayer)) {
+                map.removeLayer(currentRouteLayer);
+            }
+            
+            if (currentRouteSource && map.getSource(currentRouteSource)) {
+                map.removeSource(currentRouteSource);
+            }
+            
+            if (currentStartMarker) {
+                currentStartMarker.remove();
+                currentStartMarker = null;
+            }
+            
+            if (currentEndMarker) {
+                currentEndMarker.remove();
+                currentEndMarker = null;
+            }
+            
+            currentRouteLayer = null;
+            currentRouteSource = null;
+        }
+
+        // 初始化页面
+        document.addEventListener('DOMContentLoaded', function() {
+            // 检查用户是否已登录
+            requireLogin(window.location.href);
+            
+            // 获取用户名
+            const username = getCurrentUsername();
+            if (!username) {
+                console.error('用户未登录，将重定向到登录页面');
+                return; // requireLogin已经会处理重定向
+            }
+            
+            // 初始化Mapbox地图
+            mapboxgl.accessToken = 'pk.eyJ1IjoieWlob25nMDYxOCIsImEiOiJja2J3M28xbG4wYzl0MzJxZm0ya2Fua2p2In0.PNKfkeQwYuyGOTT_x9BJ4Q';
+            map = new mapboxgl.Map({
+                container: 'map',
+                style: 'mapbox://styles/mapbox/streets-v11',
+                center: [114.177216, 22.302711], // 注意Mapbox使用[lng, lat]顺序
+                zoom: 13
+            });
+            
+            // 添加导航控件
+            map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+            
+            // 等待地图加载完成
+            map.on('load', function() {
+                // 加载路线数据
+                loadRouteData();
+            });
+
+            // 添加事件监听器
+            document.getElementById('district').addEventListener('change', updateSubDistricts);
+            document.getElementById('subDistrict').addEventListener('change', updateRoutes);
+            document.getElementById('route').addEventListener('change', showSelectedRoute);
+            
+            // 浏览模式按钮事件
+            document.getElementById('browseBtn').addEventListener('click', toggleBrowseMode);
+        });
+
+        // 确认点亮功能
+        async function confirmRoute() {
+            const selectedRoute = document.getElementById('route').value;
+            const selectedSubDistrict = document.getElementById('subDistrict').value;
+            
+            if (!selectedRoute) {
+                alert('请先选择一条路线');
+                return;
+            }
+
+            // 获取当前用户名
+            const username = getCurrentUsername();
+            console.log('当前用户名:', username);
+            if (!username) {
+                alert('请先登录再点亮路线');
+                window.location.href = '../signin/signin.html?returnUrl=' + encodeURIComponent(window.location.href);
+                return;
+            }
+
+            // 获取路线数据
+            const routeData = routeCoordinates[selectedSubDistrict]?.[selectedRoute];
+            if (!routeData) {
+                alert('无法获取路线数据');
+                return;
+            }
+
+            console.log('确认点亮路线:', selectedSubDistrict, selectedRoute, routeData);
+            
+            // 获取当前用户已完成的路线，使用用户名作为key
+            const storageKey = `userCompletedRoutes_${username}`;
+            console.log('存储键:', storageKey);
+            const completedRoutes = JSON.parse(localStorage.getItem(storageKey) || '[]');
+            console.log('已完成路线:', completedRoutes);
+            
+            // 检查是否已经完成过这条路线
+            const isAlreadyCompleted = completedRoutes.some(route => 
+                route.name === selectedRoute && 
+                route.subDistrict === selectedSubDistrict
+            );
+
+            if (isAlreadyCompleted) {
+                alert('这条路线已经点亮过了！');
+                return;
+            }
+            
+            // 处理不同格式的路线数据
+            let coordinates;
+            if (Array.isArray(routeData)) {
+                // 直接是坐标数组
+                coordinates = routeData;
+            } else if (typeof routeData === 'object' && routeData.coordinates) {
+                // 对象格式，获取coordinates
+                coordinates = routeData.coordinates;
+            } else {
+                alert('路线数据格式无效');
+                console.error('无效的路线数据格式:', routeData);
+                return;
+            }
+            
+            if (!coordinates || !Array.isArray(coordinates) || coordinates.length < 2) {
+                alert('路线坐标数据无效');
+                console.error('路线坐标无效或不足:', coordinates);
+                return;
+            }
+            
+            try {
+                // 禁用按钮防止重复提交
+                const confirmBtn = document.querySelector('.confirm-btn');
+                const cancelBtn = document.querySelector('.cancel-btn');
+                if (confirmBtn) confirmBtn.disabled = true;
+                if (cancelBtn) cancelBtn.disabled = true;
+                
+                // 将坐标转换为统一格式
+                const points = coordinates.map(coord => {
+                    if (Array.isArray(coord) && coord.length >= 2) {
+                        // [lat, lng] 格式
+                        return {
+                            lat: coord[0],
+                            lon: coord[1],
+                            ele: 0,
+                            time: new Date().toISOString()
+                        };
+                    } else if (typeof coord === 'object') {
+                        // 对象格式
+                        return {
+                            lat: coord.lat || 0,
+                            lon: coord.lng || coord.lon || 0,
+                            ele: coord.ele || 0,
+                            time: coord.time || new Date().toISOString()
+                        };
+                    } else {
+                        console.warn('无法处理的坐标格式:', coord);
+                        return null;
+                    }
+                }).filter(point => point !== null);
+                
+                if (points.length < 2) {
+                    alert('有效坐标点不足');
+                    if (confirmBtn) confirmBtn.disabled = false;
+                    if (cancelBtn) cancelBtn.disabled = false;
+                    return;
+                }
+
+                // 添加新完成的路线
+                const newRoute = {
+                    name: selectedRoute,
+                    subDistrict: selectedSubDistrict,
+                    points: points,
+                    timestamp: new Date().toISOString(),
+                    username: username // 添加用户名
+                };
+
+                // 本地存储
+                completedRoutes.push(newRoute);
+                localStorage.setItem(storageKey, JSON.stringify(completedRoutes));
+                console.log('路线已保存到本地存储');
+
+                // 向服务器保存路线数据
+                try {
+                    console.log('正在向服务器提交路线数据...');
+                    const response = await fetch('../../api/save_completed_route.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(newRoute)
+                    });
+                    
+                    const result = await response.json();
+                    if (result.success) {
+                        console.log('路线成功保存到服务器:', result);
+                    } else {
+                        console.error('服务器保存失败:', result.error || '未知错误');
+                        // 即使服务器保存失败，本地存储已完成，仍然继续流程
+                    }
+                } catch (serverError) {
+                    console.error('向服务器提交数据出错:', serverError);
+                    // 即使服务器请求失败，本地存储已完成，仍然继续流程
+                }
+                
+                console.log('路线保存完成:', newRoute);
+                
+                // 重新启用按钮
+                if (confirmBtn) confirmBtn.disabled = false;
+                if (cancelBtn) cancelBtn.disabled = false;
+                
+                // 显示成功提示
+                document.getElementById('modalOverlay').classList.add('show');
+                document.getElementById('successModal').classList.add('show');
+            } catch (error) {
+                console.error('保存路线时出错:', error);
+                alert('保存路线时出错: ' + error.message);
+                
+                // 重新启用按钮
+                const confirmBtn = document.querySelector('.confirm-btn');
+                const cancelBtn = document.querySelector('.cancel-btn');
+                if (confirmBtn) confirmBtn.disabled = false;
+                if (cancelBtn) cancelBtn.disabled = false;
+            }
+        }
+
+        // 取消功能
+        function cancelRoute() {
+            window.location.href = '../main/index.html';
+        }
+
+        // 返回主页功能
+        function goToMainPage() {
+            window.location.href = '../main/index.html?refresh=' + new Date().getTime();
+        }
+
+        // 检查是否是从确认页面返回
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const routeCompleted = urlParams.get('routeCompleted');
+            
+            if (routeCompleted === 'true') {
+                // 更新主页面显示（如果需要）
+                const completedRoute = JSON.parse(localStorage.getItem('completedRoute'));
+                if (completedRoute) {
+                    // 这里可以添加更新主页面显示的代码
+                    console.log('Route completed:', completedRoute);
+                }
+            }
+        }
+
+        // 加载已完成的路线数据
+        async function loadCompletedRoutes() {
+            try {
+                const username = getCurrentUsername();
+                if (!username) return;
+                
+                // 获取本地存储的完成路线
+                const storageKey = `userCompletedRoutes_${username}`;
+                let completedRoutes = JSON.parse(localStorage.getItem(storageKey) || '[]');
+                
+                // 尝试从服务器获取更新的数据
+                try {
+                    const response = await fetch('../../api/get_completed_routes.php');
+                    if (response.ok) {
+                        const result = await response.json();
+                        if (result.success && Array.isArray(result.routes)) {
+                            console.log('从服务器获取到已完成路线:', result.routes.length);
+                            // 合并服务器数据与本地数据
+                            completedRoutes = result.routes;
+                            // 更新本地存储
+                            localStorage.setItem(storageKey, JSON.stringify(completedRoutes));
+                        }
+                    }
+                } catch (serverError) {
+                    console.warn('从服务器获取完成路线失败，使用本地数据:', serverError);
+                }
+                
+                // 提取已完成的路线名称
+                completedRouteNames = completedRoutes.map(route => ({
+                    name: route.name,
+                    subDistrict: route.subDistrict
+                }));
+                
+                console.log('已完成的路线:', completedRouteNames);
+            } catch (error) {
+                console.error('加载已完成路线数据失败:', error);
+            }
+        }
+        
+        // 切换浏览模式
+        function toggleBrowseMode() {
+            browseMode = !browseMode;
+            const browseBtn = document.getElementById('browseBtn');
+            const browseTooltip = document.getElementById('browseTooltip');
+            
+            if (browseMode) {
+                // 进入浏览模式
+                browseBtn.classList.add('active');
+                browseTooltip.classList.add('show');
+                showUnfinishedRoutes();
+            } else {
+                // 退出浏览模式
+                browseBtn.classList.remove('active');
+                browseTooltip.classList.remove('show');
+                clearUnfinishedRoutes();
+            }
+        }
+        
+        // 显示所有未完成的路线
+        function showUnfinishedRoutes() {
+            // 清除当前路线
+            clearCurrentRoute();
+            allUnfinishedRoutes = [];
+            
+            // 检查是否有路线数据
+            if (Object.keys(routeCoordinates).length === 0) {
+                console.warn('路线数据尚未加载完成，无法显示未完成路线');
+                return;
+            }
+            
+            try {
+                let routeIndex = 0;
+                const allRoutes = [];
+                
+                // 遍历所有路线
+                for (const [subDistrictKey, subDistrictRoutes] of Object.entries(routeCoordinates)) {
+                    for (const [routeName, routeData] of Object.entries(subDistrictRoutes)) {
+                        // 检查该路线是否已完成
+                        const isCompleted = completedRouteNames.some(route => 
+                            route.name === routeName && route.subDistrict === subDistrictKey
+                        );
+                        
+                        // 如果未完成，则准备显示
+                        if (!isCompleted) {
+                            const routeId = `unfinished-route-${routeIndex}`;
+                            routeIndex++;
+                            
+                            // 记录未完成路线信息
+                            allUnfinishedRoutes.push({
+                                id: routeId,
+                                name: routeName,
+                                subDistrict: subDistrictKey,
+                                data: routeData
+                            });
+                            
+                            // 添加到所有路线集合
+                            allRoutes.push({
+                                routeId,
+                                routeName,
+                                subDistrictKey,
+                                routeData
+                            });
+                        }
+                    }
+                }
+                
+                console.log(`找到 ${allUnfinishedRoutes.length} 条未点亮路线`);
+                
+                // 如果没有未完成的路线
+                if (allUnfinishedRoutes.length === 0) {
+                    alert('恭喜！您已点亮所有可用路线。');
+                    toggleBrowseMode(); // 退出浏览模式
+                    return;
+                }
+                
+                // 创建一个bounds对象来包含所有路线
+                const bounds = new mapboxgl.LngLatBounds();
+                let hasAddedRoutes = false;
+                
+                // 添加所有未完成路线到地图
+                allRoutes.forEach(({routeId, routeName, subDistrictKey, routeData}) => {
+                    // 处理路线数据
+                    let coordinates;
+                    if (Array.isArray(routeData)) {
+                        coordinates = routeData;
+                    } else if (typeof routeData === 'object' && routeData.coordinates) {
+                        coordinates = routeData.coordinates;
+                    } else {
+                        console.warn(`路线 ${routeName} 数据格式无效，跳过显示`);
+                        return;
+                    }
+                    
+                    if (!coordinates || !Array.isArray(coordinates) || coordinates.length < 2) {
+                        console.warn(`路线 ${routeName} 坐标无效或不足，跳过显示`);
+                        return;
+                    }
+                    
+                    try {
+                        // 将坐标转换为Mapbox格式
+                        const mapboxCoordinates = coordinates.map(coord => {
+                            if (Array.isArray(coord) && coord.length >= 2) {
+                                return [coord[1], coord[0]]; // [lat, lng] -> [lng, lat]
+                            } else if (typeof coord === 'object' && 'lat' in coord && 'lng' in coord) {
+                                return [coord.lng, coord.lat]; // {lat, lng} -> [lng, lat]
+                            } else if (typeof coord === 'object' && 'lat' in coord && 'lon' in coord) {
+                                return [coord.lon, coord.lat]; // {lat, lon} -> [lng, lat]
+                            } else {
+                                console.warn('无效坐标格式:', coord);
+                                return null;
+                            }
+                        }).filter(coord => coord !== null);
+                        
+                        if (mapboxCoordinates.length < 2) {
+                            console.warn(`路线 ${routeName} 转换后的有效坐标不足，跳过显示`);
+                            return;
+                        }
+                        
+                        // 添加路线源
+                        map.addSource(routeId, {
+                            type: 'geojson',
+                            data: {
+                                type: 'Feature',
+                                properties: {
+                                    name: routeName,
+                                    subDistrict: subDistrictKey
+                                },
+                                geometry: {
+                                    type: 'LineString',
+                                    coordinates: mapboxCoordinates
+                                }
+                            }
+                        });
+                        
+                        // 为路线生成随机颜色，但亮度适中
+                        const hue = Math.floor(Math.random() * 360);
+                        const color = `hsl(${hue}, 70%, 50%)`;
+                        
+                        // 添加路线图层
+                        map.addLayer({
+                            id: routeId,
+                            type: 'line',
+                            source: routeId,
+                            layout: {
+                                'line-join': 'round',
+                                'line-cap': 'round'
+                            },
+                            paint: {
+                                'line-color': color,
+                                'line-width': 4,
+                                'line-opacity': 0.7
+                            }
+                        });
+                        
+                        // 添加路线点击事件
+                        map.on('click', routeId, function(e) {
+                            if (!browseMode) return;
+                            
+                            const properties = e.features[0].properties;
+                            selectRouteByClick(properties.subDistrict, properties.name);
+                        });
+                        
+                        // 添加鼠标悬停效果
+                        map.on('mouseenter', routeId, function() {
+                            if (!browseMode) return;
+                            map.getCanvas().style.cursor = 'pointer';
+                            
+                            // 突出显示路线
+                            map.setPaintProperty(routeId, 'line-width', 6);
+                            map.setPaintProperty(routeId, 'line-opacity', 1);
+                        });
+                        
+                        map.on('mouseleave', routeId, function() {
+                            if (!browseMode) return;
+                            map.getCanvas().style.cursor = '';
+                            
+                            // 恢复路线样式
+                            map.setPaintProperty(routeId, 'line-width', 4);
+                            map.setPaintProperty(routeId, 'line-opacity', 0.7);
+                        });
+                        
+                        // 扩展bounds以包含该路线
+                        mapboxCoordinates.forEach(coord => bounds.extend(coord));
+                        hasAddedRoutes = true;
+                    } catch (routeError) {
+                        console.error(`添加路线 ${routeName} 时出错:`, routeError);
+                    }
+                });
+                
+                // 调整地图视图以显示所有路线
+                if (hasAddedRoutes) {
+                    map.fitBounds(bounds, {
+                        padding: 50,
+                        maxZoom: 13
+                    });
+                }
+            } catch (error) {
+                console.error('显示未完成路线时出错:', error);
+            }
+        }
+        
+        // 清除所有未完成路线
+        function clearUnfinishedRoutes() {
+            allUnfinishedRoutes.forEach(route => {
+                if (map.getLayer(route.id)) {
+                    map.removeLayer(route.id);
+                }
+                if (map.getSource(route.id)) {
+                    map.removeSource(route.id);
+                }
+            });
+            allUnfinishedRoutes = [];
+        }
+        
+        // 通过点击选择路线
+        function selectRouteByClick(subDistrictKey, routeName) {
+            // 查找路线数据
+            if (!routeCoordinates[subDistrictKey] || !routeCoordinates[subDistrictKey][routeName]) {
+                console.error('未找到选中的路线数据:', subDistrictKey, routeName);
+                return;
+            }
+            
+            console.log('选中路线:', subDistrictKey, routeName);
+            
+            // 查找并选择对应的地区
+            const districtSelect = document.getElementById('district');
+            let selectedDistrict = '';
+            
+            // 查找包含该分区的地区
+            for (const [districtKey, district] of Object.entries(districtData)) {
+                if (district.subDistricts && districtKey in districtData && 
+                    subDistrictKey in districtData[districtKey].subDistricts) {
+                    selectedDistrict = districtKey;
+                    break;
+                }
+            }
+            
+            if (!selectedDistrict) {
+                console.error('未找到包含分区的地区:', subDistrictKey);
+                return;
+            }
+            
+            // 设置地区选择框
+            districtSelect.value = selectedDistrict;
+            districtSelect.dispatchEvent(new Event('change'));
+            
+            // 给DOM更新时间
+            setTimeout(() => {
+                // 设置分区选择框
+                const subDistrictSelect = document.getElementById('subDistrict');
+                subDistrictSelect.value = subDistrictKey;
+                subDistrictSelect.dispatchEvent(new Event('change'));
+                
+                // 给DOM更新时间
+                setTimeout(() => {
+                    // 设置路线选择框
+                    const routeSelect = document.getElementById('route');
+                    routeSelect.value = routeName;
+                    routeSelect.dispatchEvent(new Event('change'));
+                    
+                    // 退出浏览模式
+                    if (browseMode) {
+                        toggleBrowseMode();
+                    }
+                }, 100);
+            }, 100);
+        }
+    </script>
+</body>
+</html> 
